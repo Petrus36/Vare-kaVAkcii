@@ -76,13 +76,21 @@ You can change these credentials in `app/admin/page.tsx`.
 
 ## Image Uploads
 
-Images are uploaded and stored in the `public/uploads/` directory. The upload API endpoint (`/api/upload`) handles:
+Images are uploaded and stored using **Vercel Blob Storage**. The upload API endpoint (`/api/upload`) handles:
 - File type validation (images only)
 - File size validation (max 5MB)
 - Automatic unique filename generation
-- Storage in `public/uploads/` directory
+- Cloud storage via Vercel Blob
 
-Uploaded images are accessible via `/uploads/filename.jpg` and the path is stored in the database.
+**For Vercel deployment:**
+- No additional configuration needed - Vercel Blob works automatically
+- Images are stored in the cloud and accessible via public URLs
+
+**For local development:**
+- Vercel Blob will work if you have `BLOB_READ_WRITE_TOKEN` in your `.env.local`
+- Or you can use a local file system fallback (see below)
+
+Uploaded images are stored with public URLs that are saved in the database.
 
 ## Database Schema
 
