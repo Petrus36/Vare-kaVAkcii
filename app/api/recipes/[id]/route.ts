@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRecipeById, updateRecipe, deleteRecipe } from '@/lib/neo4j'
+import { getRecipeById, updateRecipe, deleteRecipe } from '@/lib/db'
+
+export const runtime = 'nodejs' // Use Node.js runtime for pg
 
 interface RouteParams {
   params: {
@@ -31,12 +33,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const body = await request.json()
+    
+    // Validate required fields
+    if (!body.name || !body.recipe || !body.ingredients) {
+      return NextResponse.json(
+        { error: 'Názov, recept a ingrediencie sú povinné polia' },
+        { status: 400 }
+      )
+    }
+
     const recipe = await updateRecipe(params.id, {
       name: body.name,
       description: body.description || '',
-      imageUrl: body.imageUrl,
+      imageUrl: body.imageUrl || '/placeholder-food.jpg',
       recipe: body.recipe,
-      ingredients: body.ingredients || '',
+      ingredients: body.ingredients,
       cookingTime: body.cookingTime || '',
       difficulty: body.difficulty || '',
       servings: body.servings || '',
@@ -46,7 +57,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     if (!recipe) {
       return NextResponse.json(
-        { error: 'Recipe not found or failed to update' },
+        { error: 'Recept sa nenašiel alebo sa nepodarilo aktualizovať. Skontrolujte pripojenie k databáze.' },
         { status: 404 }
       )
     }
@@ -54,8 +65,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(recipe)
   } catch (error) {
     console.error('Error in PUT /api/recipes/[id]:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Neznáma chyba'
     return NextResponse.json(
-      { error: 'Failed to update recipe' },
+      { error: `Chyba pri aktualizácii receptu: ${errorMessage}` },
       { status: 500 }
     )
   }

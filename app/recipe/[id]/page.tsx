@@ -1,4 +1,4 @@
-import { getRecipeById } from '@/lib/neo4j'
+import { getRecipeById } from '@/lib/db'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'

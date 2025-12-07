@@ -8,7 +8,26 @@ export function getDriver(): Driver {
     const user = process.env.NEO4J_USER || 'neo4j'
     const password = process.env.NEO4J_PASSWORD || 'password'
 
-    driver = neo4j.driver(uri, neo4j.auth.basic(user, password))
+    if (!uri || !user || !password) {
+      console.warn('Neo4j environment variables not fully configured. Using defaults.')
+    }
+
+    driver = neo4j.driver(
+      uri,
+      neo4j.auth.basic(user, password),
+      {
+        maxConnectionLifetime: 3 * 60 * 60 * 1000, // 3 hours
+        maxConnectionPoolSize: 50,
+        connectionAcquisitionTimeout: 2 * 60 * 1000, // 2 minutes
+        disableLosslessIntegers: true,
+      }
+    )
+
+    // Verify connectivity on initialization
+    driver.verifyConnectivity().catch((error) => {
+      console.error('Neo4j connection error:', error)
+      console.error('Please check your NEO4J_URI, NEO4J_USER, and NEO4J_PASSWORD in .env file')
+    })
   }
 
   return driver
@@ -17,6 +36,26 @@ export function getDriver(): Driver {
 export async function getSession(): Promise<Session> {
   const driver = getDriver()
   return driver.session()
+}
+
+export async function closeDriver(): Promise<void> {
+  if (driver) {
+    await driver.close()
+    driver = null
+  }
+}
+
+export async function testConnection(): Promise<boolean> {
+  const session = await getSession()
+  try {
+    const result = await session.run('RETURN 1 as test')
+    return result.records.length > 0
+  } catch (error) {
+    console.error('Neo4j connection test failed:', error)
+    return false
+  } finally {
+    await session.close()
+  }
 }
 
 export interface Recipe {
@@ -101,6 +140,16 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
 export async function createRecipe(recipeData: Omit<Recipe, 'id'>): Promise<Recipe | null> {
   const session = await getSession()
   try {
+    // Validate required fields
+    if (!recipeData.name || !recipeData.recipe || !recipeData.ingredients) {
+      console.error('Missing required fields:', {
+        name: !!recipeData.name,
+        recipe: !!recipeData.recipe,
+        ingredients: !!recipeData.ingredients,
+      })
+      throw new Error('Missing required fields: name, recipe, or ingredients')
+    }
+
     const result = await session.run(
       `CREATE (r:Recipe {
         name: $name,
@@ -119,7 +168,7 @@ export async function createRecipe(recipeData: Omit<Recipe, 'id'>): Promise<Reci
       {
         name: recipeData.name,
         description: recipeData.description || '',
-        imageUrl: recipeData.imageUrl,
+        imageUrl: recipeData.imageUrl || '/placeholder-food.jpg',
         recipe: recipeData.recipe,
         ingredients: recipeData.ingredients || '',
         cookingTime: recipeData.cookingTime || '',
@@ -131,6 +180,7 @@ export async function createRecipe(recipeData: Omit<Recipe, 'id'>): Promise<Reci
     )
 
     if (result.records.length === 0) {
+      console.error('No records returned from CREATE query')
       return null
     }
 
@@ -150,7 +200,11 @@ export async function createRecipe(recipeData: Omit<Recipe, 'id'>): Promise<Reci
     }
   } catch (error) {
     console.error('Error creating recipe:', error)
-    return null
+    if (error instanceof Error) {
+      console.error('Error details:', error.message)
+      console.error('Stack trace:', error.stack)
+    }
+    throw error // Re-throw to let the API route handle it
   } finally {
     await session.close()
   }
