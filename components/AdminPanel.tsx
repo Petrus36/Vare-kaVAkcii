@@ -99,13 +99,19 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
       })
 
       if (!response.ok) {
-        throw new Error('Upload failed')
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.error || errorData.details || 'Upload failed'
+        console.error('Upload error:', errorMessage)
+        alert(`Chyba pri nahrávaní obrázka: ${errorMessage}`)
+        return null
       }
 
       const data = await response.json()
       return data.url
     } catch (error) {
       console.error('Error uploading image:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Neznáma chyba'
+      alert(`Chyba pri nahrávaní obrázka: ${errorMessage}`)
       return null
     }
   }

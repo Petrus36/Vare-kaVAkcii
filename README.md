@@ -15,7 +15,7 @@ A modern food recipes website built with Next.js, TypeScript, and Tailwind CSS, 
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
-- **Database**: PostgreSQL (Neon)
+- **Database**: PostgreSQL (Neon) with Prisma ORM
 
 ## Getting Started
 
@@ -40,14 +40,24 @@ DATABASE_URL=postgresql://user:password@host:port/database?sslmode=require
 **Note**: 
 - For Neon, get your connection string from the Neon dashboard
 - The connection string should look like: `postgresql://user:password@ep-xxx-xxx.region.aws.neon.tech/dbname?sslmode=require`
-- The database schema will be automatically created on first use
 
-3. Run the development server:
+3. Set up Prisma:
+```bash
+# Generate Prisma Client
+npx prisma generate
+
+# Create database tables (run migrations)
+npx prisma migrate dev --name init
+```
+
+This will create the `recipes` table in your database.
+
+4. Run the development server:
 ```bash
 npm run dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Admin Access
 
@@ -70,8 +80,11 @@ You can change these credentials in `app/admin/page.tsx`.
 │   ├── FoodCard.tsx      # Recipe card component
 │   ├── Footer.tsx        # Footer component
 │   └── Navbar.tsx        # Navigation bar
-└── lib/
-    └── db.ts             # PostgreSQL database functions
+├── lib/
+│   ├── db.ts             # Database functions using Prisma
+│   └── prisma.ts         # Prisma client instance
+└── prisma/
+    └── schema.prisma      # Prisma schema definition
 ```
 
 ## Image Uploads

@@ -1,26 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { testConnection, getPool, initDatabase } from '@/lib/db'
+import { testConnection } from '@/lib/db'
+import { prisma } from '@/lib/prisma'
 
-export const runtime = 'nodejs' // Use Node.js runtime for pg
+export const runtime = 'nodejs' // Use Node.js runtime
 
 export async function GET() {
   try {
     const isConnected = await testConnection()
     
     if (isConnected) {
-      // Try to run a simple query and initialize database
-      const pool = getPool()
       try {
-        // Initialize database schema if needed
-        await initDatabase()
-        
-        const result = await pool.query('SELECT COUNT(*) as count FROM recipes')
+        const recipeCount = await prisma.recipe.count()
         
         return NextResponse.json({
           success: true,
           message: 'Database connection successful',
-          database: 'PostgreSQL (Neon)',
-          recipeCount: result.rows[0]?.count || 0,
+          database: 'PostgreSQL (Neon) with Prisma',
+          recipeCount: recipeCount,
         })
       } catch (error) {
         return NextResponse.json({
@@ -36,6 +32,7 @@ export async function GET() {
         check: [
           'Is DATABASE_URL set in .env.local?',
           'Is your Neon database accessible?',
+          'Have you run: npx prisma migrate dev',
           'Check your connection string format',
         ],
       }, { status: 500 })

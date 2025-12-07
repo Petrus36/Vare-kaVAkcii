@@ -53,25 +53,33 @@ export async function POST(request: NextRequest) {
         filename: filename 
       })
     } catch (blobError) {
+      console.error('Vercel Blob error:', blobError)
+      
       // Fallback to local file system for local development
-      if (process.env.NODE_ENV === 'development') {
-        const bytes = await file.arrayBuffer()
-        const buffer = Buffer.from(bytes)
+      if (process.env.NODE_ENV === 'development' || process.env.VERCEL !== '1') {
+        try {
+          const bytes = await file.arrayBuffer()
+          const buffer = Buffer.from(bytes)
 
-        // Create uploads directory if it doesn't exist
-        const uploadsDir = join(process.cwd(), 'public', 'uploads')
-        if (!existsSync(uploadsDir)) {
-          await mkdir(uploadsDir, { recursive: true })
+          // Create uploads directory if it doesn't exist
+          const uploadsDir = join(process.cwd(), 'public', 'uploads')
+          if (!existsSync(uploadsDir)) {
+            await mkdir(uploadsDir, { recursive: true })
+          }
+
+          const filepath = join(uploadsDir, filename)
+          await writeFile(filepath, buffer)
+
+          const publicUrl = `/uploads/${filename}`
+          return NextResponse.json({ url: publicUrl, filename })
+        } catch (fsError) {
+          console.error('File system error:', fsError)
+          throw new Error(`Failed to upload: ${blobError instanceof Error ? blobError.message : 'Blob storage error'}. Local fallback also failed.`)
         }
-
-        const filepath = join(uploadsDir, filename)
-        await writeFile(filepath, buffer)
-
-        const publicUrl = `/uploads/${filename}`
-        return NextResponse.json({ url: publicUrl, filename })
       } else {
-        // In production, re-throw the error
-        throw blobError
+        // In production on Vercel, provide detailed error
+        const errorMessage = blobError instanceof Error ? blobError.message : 'Unknown blob error'
+        throw new Error(`Vercel Blob Storage error: ${errorMessage}. Make sure Vercel Blob is enabled for your project.`)
       }
     }
   } catch (error) {

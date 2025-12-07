@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Recipe {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  recipe      String
+  ingredients String
+  difficulty  String?
+  servings    String?
+  category    String?
+  cookingTime String?
+  createdAt   DateTime  @default(now())
+  imageUrl    String?   @default("/placeholder-food.jpg")
+  tiktokUrl   String?
+  updatedAt   DateTime? @default(now()) @updatedAt
+
+  @@index([category])
+  @@index([createdAt(sort: Desc)])
+  @@map("recipes")
+}
